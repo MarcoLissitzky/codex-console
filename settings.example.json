@@ -1,0 +1,7 @@
+{
+  "queueDir": "../codex-queue",
+  "subscriptionEnd": "2026-12-06T23:00:00",
+  "renewalDays": 30,
+  "port": 8770,
+  "autoRedeemMinWaitMinutes": 60
+}

@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex 自动续跑控制台</title>
+<style>
+/* ---------------------------------------------------------------- fonts */
+@font-face{font-family:"Libre Caslon Display";src:url(/fonts/LibreCaslonDisplay-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Libre Caslon Text";src:url(/fonts/LibreCaslonText-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Libre Caslon Text";src:url(/fonts/LibreCaslonText-Italic.woff2) format("woff2");font-weight:400;font-style:italic}
+@font-face{font-family:"Libre Caslon Text";src:url(/fonts/LibreCaslonText-Bold.woff2) format("woff2");font-weight:700}
+@font-face{font-family:"IBM Plex Mono";src:url(/fonts/IBMPlexMono-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Noto Serif SC";src:url(/fonts/NotoSerifSC-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Noto Serif SC";src:url(/fonts/NotoSerifSC-Bold.woff2) format("woff2");font-weight:700}
+@font-face{font-family:"Barlow";src:url(/fonts/Barlow-Regular.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Barlow";src:url(/fonts/Barlow-Italic.woff2) format("woff2");font-weight:400;font-style:italic}
+@font-face{font-family:"Barlow";src:url(/fonts/Barlow-SemiBold.woff2) format("woff2");font-weight:600}
+@font-face{font-family:"Barlow Condensed";src:url(/fonts/BarlowCondensed-Bold.woff2) format("woff2");font-weight:700}
+@font-face{font-family:"Barlow Condensed";src:url(/fonts/BarlowCondensed-ExtraBold.woff2) format("woff2");font-weight:800}
+@font-face{font-family:"Barlow Semi Condensed";src:url(/fonts/BarlowSemiCondensed-SemiBold.woff2) format("woff2");font-weight:600}
+@font-face{font-family:"Barlow Semi Condensed";src:url(/fonts/BarlowSemiCondensed-Bold.woff2) format("woff2");font-weight:700}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+button{font:inherit;cursor:pointer}
+#app{min-height:100vh}
+
+/* ------------------------------------------------------- skin switcher */
+.skins{display:inline-flex;vertical-align:middle}
+.skins button{border:0;background:none;padding:4px 9px;white-space:nowrap}
+
+/* ===================================================== 朱墨 · Rubric */
+body.zhumo{
+  --bone:#EFEDE6;--ink:#1C1B18;--ver:#B8321F;--ver-dark:#E5644A;--blue:#44607C;--grey:#66625A;
+  --rule:rgba(28,27,24,.2);
+  --serif:"Libre Caslon Text","Noto Serif SC","Source Han Serif SC","Songti SC",serif;
+  --display:"Libre Caslon Display","Noto Serif SC","Source Han Serif SC",serif;
+  --mono:"IBM Plex Mono","Noto Serif SC",monospace;
+  background:var(--bone);color:var(--ink);font:16px/1.75 var(--serif);
+}
+.zm{max-width:1400px;margin:0 auto;padding:22px 40px 36px}
+.zm-run,.zm-foot{display:flex;justify-content:space-between;align-items:baseline;gap:24px;
+  font:12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--grey)}
+.zm-run b{color:var(--ink);font-weight:400}
+.zm-head{margin:18px 0 20px;display:flex;align-items:baseline;gap:28px;flex-wrap:wrap}
+.zm-head h1{font:700 34px/1.2 var(--display);margin:0;letter-spacing:.01em}
+.zm-head h1 .ver{color:var(--ver)}
+.zm-sub{font:italic 16px/1.5 var(--serif);color:var(--grey);margin:0;max-width:52em}
+.zm-body{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 270px;gap:0;border-top:1px solid var(--ink);padding-top:16px}
+.zm-main{padding-right:30px}
+.zm-hz{padding:0 30px;border-left:1px solid var(--rule)}
+.zm-notes{border-left:1px solid var(--rule);padding-left:24px}
+.zm-label{font:12px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);
+  margin:24px 0 8px;font-weight:400}
+.zm-notes .zm-label,.zm-hz>.zm-label:first-child{color:var(--ver);margin-top:2px}
+.zm-main>.zm-label{margin-top:16px}
+.zm-claims{list-style:none;margin:0;padding:0}
+.zm-claims li{display:grid;grid-template-columns:28px 1fr;margin:0 0 12px}
+.zm-claims .n{font:21px/1 var(--display);padding-top:4px}
+.zm-claims p{margin:0;font-size:16px;line-height:1.6}
+.zm-claims sup{color:var(--ver);font:12px var(--mono);margin-left:2px}
+.zm-claims .small{font-size:13px;color:var(--grey)}
+.zm-quan{font-style:normal;text-emphasis:circle var(--ver);-webkit-text-emphasis:circle var(--ver);
+  text-emphasis-position:under right;-webkit-text-emphasis-position:under}
+.zm-key{font-style:normal;border-bottom:2px dotted var(--ver);padding-bottom:1px}
+.zm-ruler{position:relative;height:12px;margin:6px 0 0;max-width:520px}
+.zm-ruler::before{content:"";position:absolute;left:0;right:0;bottom:0;border-bottom:1px solid var(--ink)}
+.zm-ruler i{position:absolute;left:0;bottom:0;height:8px;background:var(--ink)}
+.zm-ruler i.ver{background:var(--ver)}
+.zm-ruler span{position:absolute;bottom:-5px;width:1px;height:5px;background:var(--ink)}
+.nb{white-space:nowrap}
+.zm-table{width:100%;border-collapse:collapse;font-size:15px}
+.zm-table th{font:11.5px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--grey);
+  text-align:left;font-weight:400;padding:0 12px 9px 0;border-bottom:1px solid var(--ink)}
+.zm-table td{padding:6px 10px 6px 0;border-bottom:1px solid var(--rule);vertical-align:baseline}
+.zm-table tr:last-child td{border-bottom:1px solid var(--ink)}
+.zm-table td.m{font:14px var(--mono)}
+.zm-table tr.ours td{color:var(--ver)}
+.zm-table .lapse{color:var(--grey);font-style:italic}
+.zm-tl2{display:grid;grid-template-columns:1fr;gap:16px}
+.zm-tl2 h4{font:400 15px/1.4 var(--serif);margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.zm-tl2 h4 small{font:italic 13px var(--serif);color:var(--grey)}
+.zm-tl{list-style:none;margin:4px 0 0;padding:0;border-top:1px solid var(--ink)}
+.zm-tl li{display:grid;grid-template-columns:86px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--rule);font-size:14px;line-height:1.45}
+.zm-tl .t{font:12px/1.75 var(--mono);color:var(--grey)}
+.zm-tl em{font-style:italic;font-size:12.5px;color:var(--grey);margin-left:8px}
+.zm-tl li.now b,.zm-tl li.now .t{color:var(--ver)}
+.zm-tl li.expire b{color:var(--ver);font-weight:400}
+.zm-tl li.gap{color:var(--grey);font-style:italic}
+.zm-tl b{font-weight:400}
+.zm-notes ol{list-style:none;margin:0;padding:0;counter-reset:n}
+.zm-notes li{counter-increment:n;display:grid;grid-template-columns:20px 1fr;color:var(--ver);
+  font-size:14px;line-height:1.55;margin:0 0 10px}
+.zm-notes li::before{content:counter(n);font:12px/2 var(--mono)}
+.zm-notes li.ink{color:var(--grey)}
+.zm-rubbing{margin:0;padding:16px 22px 18px;color:#EFEDE6;display:flex;flex-direction:column;min-height:0;
+  background:#1C1B18 radial-gradient(rgba(239,237,230,.05) 1px,transparent 1.2px) 0 0/5px 5px}
+.zm-rubbing .sec{display:none}
+.zm-rubbing h2{font:700 20px/1.2 var(--display);margin:0}
+.zm-rubbing h2 small{font:italic 13px var(--serif);color:#A7A398;margin-left:10px;font-weight:400}
+.zm-rubbing pre{margin:10px 0 0;font:11.5px/1.6 var(--mono);color:#CFCBC0;white-space:pre-wrap;flex:1;
+  word-break:normal;overflow-wrap:anywhere;max-height:none;overflow:auto;border-top:1px dotted var(--ver-dark);padding-top:10px}
+.zm-foot{margin-top:14px}
+.zm-lower{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:28px;margin-top:22px;align-items:stretch}
+.zm-lower>section{min-width:0}
+.zm-tixwrap{border-top:1px solid var(--ink);padding-top:2px}
+.zm-tixwrap .zm-label{color:var(--ver);margin:8px 0 10px}
+.zm-lower .zm-rubbing{position:relative}
+.zm-lower .zm-rubbing>div{position:absolute;inset:16px 22px 18px;display:flex;flex-direction:column}
+.zm-dots{display:inline-flex;gap:8px;margin-right:14px;vertical-align:middle}
+.zm-dots i{width:9px;height:9px;border-radius:50%;border:1px solid var(--grey)}
+.zm-dots i.on{background:var(--ver);border-color:var(--ver)}
+.zm-act{background:none;border:0;border-bottom:1px solid var(--ink);padding:0 0 1px;margin-left:20px;
+  font:12px var(--mono);letter-spacing:.08em;color:var(--ink)}
+.zm-act:hover{color:var(--ver);border-color:var(--ver)}
+body.zhumo .skins{margin-left:18px}
+body.zhumo .skins button{font:12px var(--mono);letter-spacing:.08em;color:var(--grey);padding:0 0 0 12px}
+body.zhumo .skins button.on{color:var(--ver)}
+
+/* ================================================== 赛马排位表 · Race card */
+body.race{
+  --paper:#FBFBF9;--black:#141414;--grey:#5E5E5E;--line:#141414;
+  --c1:#FFFFFF;--c2:#141414;--c3:#D7262E;--c4:#1F5FB8;--c5:#F2C21B;--c6:#177A42;--c7:#EE7A1C;--c8:#F08CB4;
+  --turf:#1D5236;
+  --body:"Barlow","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --cond:"Barlow Condensed","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --semi:"Barlow Semi Condensed","Microsoft YaHei UI","Microsoft YaHei",sans-serif;
+  background:var(--paper);color:var(--black);font:16px/1.5 var(--body);
+}
+.rc-head{display:grid;grid-template-columns:104px 1fr auto;border-bottom:5px solid var(--black)}
+.rc-race{background:var(--black);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
+.rc-race span{font:700 12px var(--semi);letter-spacing:.22em}
+.rc-race b{font:800 50px/0.95 var(--cond)}
+.rc-race small{font:600 10px var(--semi);letter-spacing:.12em;color:#bbb;margin-top:2px}
+.rc-title{padding:10px 26px 12px}
+.rc-kick{display:flex;align-items:center;gap:10px;font:700 13px var(--semi);letter-spacing:.18em;color:var(--grey);text-transform:uppercase}
+.rc-title h1{font:800 34px/1.05 var(--cond);margin:4px 0 2px;text-transform:uppercase;letter-spacing:.005em}
+.rc-title p{margin:0;color:var(--grey);font-size:14.5px}
+.rc-acts{display:flex;align-items:center;gap:8px;padding:0 26px}
+.rc-btn{border:2px solid var(--black);background:#fff;padding:5px 12px;font:700 12px var(--semi);letter-spacing:.14em;text-transform:uppercase}
+.rc-btn:hover{background:var(--c5)}
+.rc-btn.stop{background:var(--black);color:#fff}
+.rc-btn.stop:hover{background:var(--c3)}
+.rc-wrap{padding:0 40px}
+.rc-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:36px}
+.rc-grid>div{min-width:0}
+.rc-h{font:700 13px var(--semi);letter-spacing:.2em;text-transform:uppercase;margin:20px 0 0;padding-bottom:7px;border-bottom:2px solid var(--black)}
+.cloth{display:inline-flex;align-items:center;justify-content:center;font:800 22px/1 var(--cond);
+  width:46px;height:46px;border:2px solid var(--black);flex:none}
+.cloth.sm{width:22px;height:22px;font-size:14px;border-width:1.5px}
+.cloth.k1{background:var(--c1);color:var(--black)} .cloth.k2{background:var(--c2);color:#fff}
+.cloth.k3{background:var(--c3);color:#fff;border-color:var(--c3)} .cloth.k4{background:var(--c4);color:#fff;border-color:var(--c4)}
+.cloth.k5{background:var(--c5);color:var(--black);border-color:var(--c5)} .cloth.k6{background:var(--c6);color:#fff;border-color:var(--c6)}
+.cloth.k7{background:var(--c7);color:var(--black);border-color:var(--c7)} .cloth.k8{background:var(--c8);color:var(--black);border-color:var(--c8)}
+.rc-lanes{margin-top:2px}
+.rc-lane .cloth,.rc-table .cloth{width:34px;height:34px;font-size:17px}
+.rc-lane{display:grid;grid-template-columns:34px 112px 1fr 150px;gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid #d6d6d2}
+.rc-lane .nm{font:800 18px/1.1 var(--cond);text-transform:uppercase}
+.rc-lane .nm small{display:block;font:600 11px var(--semi);color:var(--grey);letter-spacing:.06em}
+.rc-track{position:relative;height:34px}
+.rc-track .rail{position:absolute;left:0;right:0;top:50%;border-top:2px solid var(--black)}
+.rc-track .pole{position:absolute;top:8px;bottom:8px;border-left:1px solid #cfcfca}
+.rc-track .finish{position:absolute;right:0;top:-6px;bottom:-6px;border-left:3px dashed var(--c3)}
+.rc-track .run{position:absolute;left:0;top:calc(50% - 3px);height:6px}
+.rc-track .horse{position:absolute;top:50%;transform:translate(-50%,-50%)}
+.rc-lane .res{font:700 14px/1.3 var(--semi);text-align:right}
+.rc-lane .res small{display:block;font-weight:600;color:var(--grey);font-size:12px}
+.rc-finish-lbl{display:grid;grid-template-columns:34px 112px 1fr 150px;gap:14px;font:700 11px var(--semi);letter-spacing:.18em;color:var(--grey);margin:5px 0 0}
+.rc-finish-lbl span{grid-column:3;display:flex;justify-content:space-between}
+.rc-finish-lbl b{color:var(--c3)}
+.rc-table{width:100%;border-collapse:collapse;margin-top:0}
+.rc-table th{font:700 11px var(--semi);letter-spacing:.16em;text-transform:uppercase;color:var(--grey);text-align:left;padding:8px 10px 6px 0;border-bottom:2px solid var(--black)}
+.rc-table td{padding:6px 10px 6px 0;border-bottom:1px solid var(--black);vertical-align:middle}
+.rc-table .rn{font:800 19px/1 var(--cond);text-transform:uppercase}
+.rc-table .rn small{display:block;font:400 12px var(--body);text-transform:none;color:var(--grey);margin-top:2px}
+.rc-table .fig{font:700 16px var(--semi)}
+.rc-table .nr{font:800 16px var(--cond);color:#9a9a96}
+.silk{display:block;width:46px;height:32px;border:2px solid var(--black)}
+.silk.hoops{background:repeating-linear-gradient(180deg,var(--c4) 0 7px,#fff 7px 12px)}
+.silk.stripes{background:repeating-linear-gradient(90deg,var(--c3) 0 7px,#fff 7px 13px)}
+.silk.quartered{background:conic-gradient(var(--c6) 0 25%,var(--c5) 0 50%,var(--c6) 0 75%,var(--c5) 0)}
+.silk.sash{background:linear-gradient(115deg,#fff 0 38%,var(--c3) 38% 58%,#fff 58%)}
+.silk.spots{background:radial-gradient(#fff 2.2px,transparent 2.6px) 0 0/10px 10px,var(--black)}
+.silk.diamonds{background:conic-gradient(from 45deg,var(--c8) 0 25%,var(--black) 0 50%,var(--c8) 0 75%,var(--black) 0) 0 0/12px 12px}
+.rc-red{background:var(--c3);color:#fff;padding:16px 22px 18px;margin-top:22px}
+.rc-red .k{font:700 12px var(--semi);letter-spacing:.2em;text-transform:uppercase;opacity:.9}
+.rc-red h2{font:800 30px/1.08 var(--cond);text-transform:uppercase;margin:6px 0 4px;text-wrap:balance}
+.rc-red p{margin:0;font-size:14px}
+.rc-sel{margin-top:0}
+.rc-sel .row{display:grid;grid-template-columns:104px 1fr;gap:14px;padding:7px 0;border-bottom:1px solid var(--black);align-items:center}
+.rc-sel .tag{display:inline-block;background:var(--black);color:#fff;font:700 10.5px var(--semi);letter-spacing:.14em;padding:2px 6px}
+.rc-sel .big{display:block;font:800 26px/1.05 var(--cond);margin-top:3px}
+.rc-sel .txt b{display:block;font:800 17px/1.2 var(--cond);text-transform:uppercase}
+.rc-sel .txt span{color:var(--grey);font-size:13px}
+.rc-card{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.rc-card ol{list-style:none;margin:0;padding:0}
+.rc-card li{display:grid;grid-template-columns:16px 74px 1fr;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #d6d6d2}
+.rc-card .cloth.sm{width:14px;height:14px;font-size:9px}
+.rc-card .t{font:700 12.5px var(--semi)}
+.rc-card .l{font-size:13px;line-height:1.35}
+.rc-card .l em{display:block;font-size:11.5px;color:var(--grey);font-style:normal}
+.rc-card h3{font:800 16px var(--cond);text-transform:uppercase;margin:8px 0 2px}
+.rc-card h3 small{font:600 11px var(--semi);color:var(--grey);letter-spacing:.06em;margin-left:6px}
+.rc-stew{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);margin-top:28px}
+.rc-stew>*{min-width:0}
+.rc-tixcol{background:#fff;padding:20px 26px 22px;border-top:5px solid var(--black)}
+.rc-tixcol>.k{display:block;font:700 13px var(--semi);letter-spacing:.2em;text-transform:uppercase;padding-bottom:7px;border-bottom:2px solid var(--black);margin-bottom:12px}
+.rc-yel{background:var(--c5);padding:16px 22px 18px;margin-top:20px}
+.rc-yel .k{font:700 13px var(--semi);letter-spacing:.2em;text-transform:uppercase}
+.rc-yel h2{font:800 30px/0.95 var(--cond);margin:6px 0 2px;text-transform:uppercase}
+.rc-yel dl{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:0 14px;margin:8px 0 0;font-size:14px}
+.rc-yel dt{font:700 12px/1.9 var(--semi);letter-spacing:.14em;text-transform:uppercase}
+.rc-yel dd{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-blk{background:var(--black);color:#eee;position:relative;min-height:260px}
+.rc-blk>div{position:absolute;inset:20px 22px 22px;display:flex;flex-direction:column}
+.rc-blk .k{font:700 13px var(--semi);letter-spacing:.2em;text-transform:uppercase;color:#fff;padding-bottom:9px;border-bottom:2px solid #fff}
+.rc-blk pre{margin:12px 0 0;font:500 12px/1.55 var(--semi);white-space:pre-wrap;overflow-wrap:anywhere;flex:1;overflow:auto;color:#ddd}
+.rc-strip{display:grid;grid-template-columns:repeat(8,1fr);height:14px}
+.rc-strip i:nth-child(1){background:var(--c1);border:2px solid var(--black)} .rc-strip i:nth-child(2){background:var(--c2)}
+.rc-strip i:nth-child(3){background:var(--c3)} .rc-strip i:nth-child(4){background:var(--c4)} .rc-strip i:nth-child(5){background:var(--c5)}
+.rc-strip i:nth-child(6){background:var(--c6)} .rc-strip i:nth-child(7){background:var(--c7)} .rc-strip i:nth-child(8){background:var(--c8)}
+.rc-foot{background:var(--black);color:#ccc;display:flex;justify-content:space-between;padding:12px 40px 14px;
+  font:700 12px var(--semi);letter-spacing:.16em;text-transform:uppercase}
+body.race .skins{border:2px solid var(--black)}
+body.race .skins button{flex:auto;font:700 12px var(--semi);letter-spacing:.1em;color:var(--black);padding:5px 6px}
+body.race .skins button.on{background:var(--c5)}
+
+/* ------------------------------------------------------------ narrow */
+@media (max-width:900px){
+  .zm{padding:20px 20px 40px}.zm-body{grid-template-columns:1fr}.zm-main{padding-right:0}.zm-hz{padding:0;border:0}
+  .zm-lower{grid-template-columns:1fr}.zm-lower .zm-rubbing>div{position:static}
+  .zm-notes{border-left:0;border-top:1px solid var(--rule);padding:18px 0 0;margin-top:30px}
+  .zm-rubbing pre{max-height:300px}
+  .rc-wrap{padding:0 20px}.rc-grid,.rc-card,.rc-stew{grid-template-columns:1fr}.rc-blk>div{position:static}.rc-blk{padding:20px 22px}
+  .rc-lane{grid-template-columns:46px 1fr}.rc-lane .rc-track,.rc-lane .res{grid-column:1 / -1}
+  .rc-finish-lbl{display:none}
+}
+/* ------------------------------------------------- 控制面板（收进各皮肤版面） */
+.dock{display:none}
+.dock.placed{display:block}
+.dk-row{display:grid;grid-template-columns:88px minmax(0,1fr) auto;align-items:center;gap:10px}
+.dk-v{min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-v input[type=number]{width:72px}
+.dk-v select{min-width:0;max-width:100%;flex:1}
+.dk-v em{font-style:normal}
+.dk-btn{white-space:nowrap}
+.dk-msg{white-space:pre-wrap}
+.dk-msg:empty{display:none}
+.dk-switch{position:relative;display:inline-block;width:34px;height:18px;flex:0 0 34px;cursor:pointer}
+.dk-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.dk-switch i{position:absolute;inset:0;border-radius:9px;background:#c9c6bd;transition:background .15s}
+.dk-switch i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+.dk-switch input:checked + i::after{left:18px}
+.dk-switch input:focus-visible + i{outline:2px solid currentColor;outline-offset:2px}
+
+/* 朱墨：批注栏里的一段，标签是等宽小字，按钮是下划线文字 */
+body.zhumo .zm-ctl{margin-top:34px;padding-top:18px;border-top:1px solid var(--rule)}
+body.zhumo .dk-row{grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--rule)}
+body.zhumo .dk-k{grid-column:1 / -1;font:11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--grey)}
+body.zhumo .dk-v{font:15px/1.6 var(--serif);white-space:normal;flex-wrap:wrap}
+body.zhumo .dk-v input,body.zhumo .dk-v select{font:14px var(--serif);color:var(--ink);background:transparent;
+  border:0;border-bottom:1px solid var(--ink);border-radius:0;padding:0 2px}
+body.zhumo .dk-v em{font:12px var(--mono);color:var(--grey)}
+body.zhumo .dk-btn{background:none;border:0;border-bottom:1px solid var(--ink);padding:0 0 1px;font:13px var(--serif);color:var(--ink)}
+body.zhumo .dk-btn:hover{color:var(--ver);border-color:var(--ver)}
+body.zhumo .dk-btn.danger{color:var(--ver);border-color:var(--ver)}
+body.zhumo .dk-switch i{background:var(--rule)}
+body.zhumo .dk-switch input:checked + i{background:var(--ver)}
+body.zhumo .dk-msg{margin-top:10px;font:13px/1.6 var(--serif);color:var(--ver)}
+
+/* 赛马：黄色裁判区里的「Stewards' controls」，粗黑框 */
+body.race .rc-ctl{margin-top:30px;padding-top:14px;border-top:3px solid var(--black)}
+body.race .rc-ctl .k{display:block;margin-bottom:6px}
+body.race .dk-row{grid-template-columns:110px minmax(0,1fr) auto;padding:7px 0}
+body.race .dk-k{font:700 13px/1.9 var(--semi);letter-spacing:.14em;text-transform:uppercase}
+body.race .dk-v{font:16px var(--body)}
+body.race .dk-v input,body.race .dk-v select{font:600 15px var(--body);color:var(--black);background:#fff;
+  border:2px solid var(--black);border-radius:0;padding:3px 6px}
+body.race .dk-v em{font:600 12px var(--semi);letter-spacing:.08em;text-transform:uppercase}
+body.race .dk-btn{border:2px solid var(--black);background:#fff;padding:4px 12px;font:700 12px var(--semi);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--black)}
+body.race .dk-btn:hover{background:var(--black);color:#fff}
+body.race .dk-btn.danger{background:var(--black);color:#fff}
+body.race .dk-btn.danger:hover{background:var(--c3);border-color:var(--c3)}
+body.race .dk-switch i{background:rgba(20,20,20,.25);border-radius:0}
+body.race .dk-switch i::after{border-radius:0}
+body.race .dk-switch input:checked + i{background:var(--c6)}
+body.race .dk-msg{margin-top:10px;padding:8px 12px;background:var(--black);color:#fff;font:600 13px/1.6 var(--body)}
+/* ------------------------------------------------------------ 工单面板 */
+.tix{display:none}
+.tix.placed{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:26px;align-items:start}
+.tx-set{grid-column:1 / -1;display:grid;gap:4px;padding-bottom:8px}
+.tx-set-row{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:baseline}
+.tx-set-v{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-set-acts{display:flex;gap:12px}
+.tx-link{background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px}
+.tx-chip{display:inline-flex;align-items:baseline;gap:4px;margin-right:10px}
+.tx-chip button{background:none;border:0;padding:0 2px;cursor:pointer;font:inherit;color:inherit;opacity:.6}
+.tx-chip button:hover{opacity:1}
+.tx-warn{font-style:normal}
+.tx-form{display:grid;grid-template-columns:minmax(0,1fr) 120px 80px;gap:8px 12px}
+.tx-f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tx-title{grid-column:1 / -1}.tx-cwd{grid-column:1}.tx-body,.tx-foot,.tx-form .dk-msg{grid-column:1 / -1}
+.tx-f input,.tx-f select,.tx-f textarea{width:100%;min-width:0;box-sizing:border-box}
+.tx-f textarea{resize:vertical;min-height:96px}
+.tx-foot{display:flex;align-items:center;gap:10px}
+.tx-file{position:relative;cursor:pointer}
+.tx-file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.tx-files{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-list{min-width:0}
+.tx-grp{margin:0 0 8px}
+.tx-grp h4{margin:0 0 2px;display:flex;justify-content:space-between;align-items:baseline}
+.tx-pause{background:none;border:0;padding:0;cursor:pointer;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px}
+.tx-item{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:baseline;width:100%;
+  text-align:left;background:none;border:0;padding:4px 0;cursor:pointer;font:inherit;color:inherit}
+.tx-item .dot{width:8px;height:8px;border-radius:50%;align-self:center}
+.tx-item .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-item .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:16em}
+.tx-empty{margin:0 0 6px}
+.tx-dlg{width:min(760px,92vw);max-height:84vh;padding:0;border:0}
+.tx-dlg::backdrop{background:rgba(20,20,20,.45)}
+.tx-dlg-hd{display:flex;align-items:baseline;gap:14px;padding:14px 20px}
+.tx-dlg-hd b{flex:none}
+.tx-dlg-hd span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-dlg-bd{padding:4px 20px 8px;overflow:auto;max-height:calc(84vh - 120px)}
+.tx-dlg-bd pre{white-space:pre-wrap;word-break:break-word;margin:6px 0 14px}
+.tx-dlg-bd details summary{cursor:pointer}
+.tx-dlg-acts{display:flex;justify-content:flex-end;gap:10px;padding:10px 20px 16px}
+.tx-dlg-acts:empty{display:none}
+
+body.zhumo .tx-set{border-bottom:1px solid var(--rule)}
+body.zhumo .tx-set-k{font:11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--grey)}
+body.zhumo .tx-set-v{font:13px var(--mono)}
+body.zhumo .tx-link{font:12.5px var(--serif)}
+body.zhumo .tx-link:hover{color:var(--ver)}
+body.zhumo .tx-warn{color:var(--ver);font:13px var(--serif)}
+body.zhumo .tx-f>span,body.zhumo .tx-grp h4{font:11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--grey);font-weight:400}
+body.zhumo .tx-f input,body.zhumo .tx-f select{font:14px var(--serif);color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--ink);border-radius:0;padding:2px 2px}
+body.zhumo .tx-f textarea{font:13.5px/1.6 var(--serif);color:var(--ink);background:rgba(255,255,255,.35);border:1px solid var(--rule);border-radius:0;padding:6px 8px}
+body.zhumo .tx-file span{font:13px var(--serif);border-bottom:1px dotted var(--ink)}
+body.zhumo .tx-files{font:12px var(--mono);color:var(--grey)}
+body.zhumo .tx-grp h4{border-bottom:1px solid var(--rule);padding-bottom:2px}
+body.zhumo .tx-item{font:14px/1.45 var(--serif);border-bottom:1px solid var(--rule)}
+body.zhumo .tx-item:hover .nm{color:var(--ver)}
+body.zhumo .tx-item .sub,body.zhumo .tx-empty{font:11.5px var(--mono);color:var(--grey)}
+body.zhumo .dot.running{background:var(--ver)}body.zhumo .dot.inbox{border:1px solid var(--ink)}
+body.zhumo .dot.done{background:var(--ink)}body.zhumo .dot.failed{background:none;border:1px solid var(--ver)}
+body.zhumo .tx-dlg{background:var(--bone);color:var(--ink);font:15px/1.7 var(--serif);box-shadow:0 18px 60px rgba(0,0,0,.25)}
+body.zhumo .tx-dlg-hd{border-bottom:1px solid var(--ink)}
+body.zhumo .tx-dlg-hd b{font:700 20px var(--display)}
+body.zhumo .tx-dlg-hd span,body.zhumo .tx-dlg-bd summary,body.zhumo .tx-dlg-bd h5{font:11.5px var(--mono);letter-spacing:.06em;color:var(--grey)}
+body.zhumo .tx-dlg-bd h5{margin:12px 0 0;font-weight:400;text-transform:uppercase;color:var(--ver)}
+body.zhumo .tx-dlg-bd pre{font:14px/1.7 var(--serif)}
+body.zhumo .tx-dlg-bd pre.code{font:12px/1.6 var(--mono);color:#3c3a35}
+
+body.race .tx-set{border-bottom:2px solid var(--black)}
+body.race .tx-set-k{font:700 11.5px var(--semi);letter-spacing:.14em;text-transform:uppercase}
+body.race .tx-set-v{font:600 13px var(--body)}
+body.race .tx-link{font:700 12px var(--semi);letter-spacing:.1em}
+body.race .tx-link:hover{background:var(--c5)}
+body.race .tx-warn{color:var(--c3);font:700 13px var(--semi)}
+body.race .tx-f>span,body.race .tx-grp h4{font:700 11.5px var(--semi);letter-spacing:.14em;text-transform:uppercase}
+body.race .tx-f input,body.race .tx-f select,body.race .tx-f textarea{font:500 14px var(--body);color:var(--black);background:#fff;border:2px solid var(--black);border-radius:0;padding:3px 6px}
+body.race .tx-f textarea{line-height:1.5}
+body.race .tx-file span{display:inline-block;border:2px dashed var(--black);padding:3px 10px;font:700 12px var(--semi);letter-spacing:.12em}
+body.race .tx-files{font:600 12px var(--semi);color:var(--grey)}
+body.race .tx-grp h4{border-bottom:2px solid var(--black);padding-bottom:3px}
+body.race .tx-item{font:600 14px/1.4 var(--body);border-bottom:1px solid #d6d6d2}
+body.race .tx-item:hover{background:var(--c5)}
+body.race .tx-item .sub,body.race .tx-empty{font:600 11.5px var(--semi);color:var(--grey);letter-spacing:.04em}
+body.race .tx-item .dot{border-radius:0;width:10px;height:10px}
+body.race .dot.running{background:var(--c5);outline:2px solid var(--black)}body.race .dot.inbox{background:#fff;outline:2px solid var(--black)}
+body.race .dot.done{background:var(--c6)}body.race .dot.failed{background:var(--c3)}
+body.race .tx-dlg{background:var(--paper);color:var(--black);font:15px/1.6 var(--body);border:3px solid var(--black)}
+body.race .tx-dlg-hd{background:var(--black);color:#fff}
+body.race .tx-dlg-hd b{font:800 22px var(--cond);text-transform:uppercase}
+body.race .tx-dlg-hd span{font:600 12px var(--semi);letter-spacing:.08em;color:#bbb}
+body.race .tx-dlg-hd .dk-btn{background:var(--black);color:#fff;border-color:#fff}
+body.race .tx-dlg-bd h5{margin:12px 0 0;font:700 12px var(--semi);letter-spacing:.16em;text-transform:uppercase;border-bottom:2px solid var(--black);padding-bottom:3px}
+body.race .tx-dlg-bd summary{font:700 12px var(--semi);letter-spacing:.12em;text-transform:uppercase}
+body.race .tx-dlg-bd pre.code{font:500 12px/1.55 var(--semi);background:#fff;border:1px solid #d6d6d2;padding:8px 10px}
+body.race .rc-ctl{margin-top:12px;padding-top:8px}
+body.race .dk-row{padding:4px 0}
+
+@media (max-width:1100px){ .tix.placed{grid-template-columns:1fr} }
+@media (max-width:820px){
+  body.race .dk-row{grid-template-columns:90px minmax(0,1fr) auto}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="dock" class="dock">
+  <div class="dk-row"><span class="dk-k">续跑上限</span>
+    <span class="dk-v"><input id="dockMax" type="number" min="0" step="1" placeholder="默认"><em>0 = 无限</em></span>
+    <button data-dock="apply-max" type="button" class="dk-btn">应用</button></div>
+  <div class="dk-row"><span class="dk-k">已续跑</span>
+    <span class="dk-v" id="dockCount">–</span>
+    <button data-dock="clear-count" type="button" class="dk-btn">清零</button></div>
+  <div class="dk-row"><span class="dk-k">自动兑换</span>
+    <span class="dk-v"><label class="dk-switch"><input id="dockAuto" type="checkbox"><i></i></label><em id="dockAutoState"></em></span>
+    <span></span></div>
+  <div class="dk-row"><span class="dk-k">手动兑换</span>
+    <span class="dk-v"><select id="dockCredit"></select></span>
+    <button data-dock="redeem" type="button" class="dk-btn danger">兑换…</button></div>
+  <div id="dockMsg" class="dk-msg"></div>
+</div>
+
+<div id="tix" class="tix">
+  <div class="tx-set">
+    <div class="tx-set-row"><span class="tx-set-k">队列目录</span><span class="tx-set-v" id="tixDir">–</span>
+      <span class="tx-set-acts"><button type="button" class="tx-link" data-tixset="pick-dir">选择…</button><button type="button" class="tx-link" data-tixset="edit-dir">输入</button></span></div>
+    <div class="tx-set-row"><span class="tx-set-k">允许的工作目录</span><span class="tx-set-v" id="tixRoots">–</span>
+      <span class="tx-set-acts"><button type="button" class="tx-link" data-tixset="add-root">添加…</button></span></div>
+  </div>
+  <form id="tixForm" class="tx-form" autocomplete="off">
+    <label class="tx-f tx-title"><span>标题</span><input name="title" placeholder="例如：回归代码审计" required></label>
+    <label class="tx-f tx-cwd"><span>工作目录 <button type="button" class="tx-link" data-tixset="pick-cwd">选择…</button></span><input name="cwd" list="tixCwds" placeholder="D:\work\my-repo" required><datalist id="tixCwds"></datalist></label>
+    <label class="tx-f tx-sb"><span>沙箱</span><select name="sandbox"><option value="workspace-write">可写工作目录</option><option value="read-only">只读</option></select></label>
+    <label class="tx-f tx-mr"><span>续跑上限</span><input name="maxResumes" type="number" min="0" step="1" placeholder="默认"></label>
+    <label class="tx-f tx-body"><span>任务正文</span><textarea name="body" rows="6" placeholder="发给 Codex 的完整任务：输入在哪、要做什么、产出放哪、怎么验收。" required></textarea></label>
+    <div class="tx-foot">
+      <label class="tx-file"><input type="file" name="files" multiple><span>附件</span></label>
+      <span id="tixFiles" class="tx-files"></span>
+      <button type="submit" class="dk-btn">提交工单</button>
+    </div>
+    <div id="tixMsg" class="dk-msg"></div>
+  </form>
+  <div id="tixList" class="tx-list"></div>
+</div>
+
+<dialog id="tixDlg" class="tx-dlg">
+  <div class="tx-dlg-hd"><b id="tixDlgTitle"></b><span id="tixDlgMeta"></span><button type="button" data-tix="close" class="dk-btn">关闭</button></div>
+  <div id="tixDlgBody" class="tx-dlg-bd"></div>
+  <div id="tixDlgActs" class="tx-dlg-acts"></div>
+</dialog>
+
+<script>
+// ===================================================================== data
+const SKIN_KEY = 'codex-console-skin';
+let last = null;          // last /api/status payload
+let fetchedAt = 0;        // local clock when it arrived
+let connError = '';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+function clock(ts, withSec){
+  const d = new Date(ts * 1000);
+  return pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+       + (withSec ? ':' + pad(d.getSeconds()) : '');
+}
+function left(sec){
+  if (sec <= 0) return '已到';
+  const d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600), m = Math.floor(sec%3600/60);
+  if (d) return d + ' 天 ' + h + ' 小时';
+  if (h) return h + ' 小时 ' + m + ' 分';
+  return m + ' 分';
+}
+function leftShort(sec){
+  if (sec <= 0) return '0M';
+  const d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600), m = Math.floor(sec%3600/60);
+  return d ? d + 'D ' + h + 'H' : h ? h + 'H ' + pad(m) + 'M' : m + 'M';
+}
+const nowTs = () => last ? last.now + (Date.now()/1000 - fetchedAt) : Date.now()/1000;
+// countdown spans: <span data-left="epoch" data-fmt="short">
+const L = (ts, fmt) => `<span class="nb" data-left="${ts}"${fmt ? ' data-fmt="'+fmt+'"' : ''}>${(fmt ? leftShort : left)(ts - nowTs())}</span>`;
+
+const STATUS = {
+  idle:'空闲', checking_quota:'检查额度', waiting_for_quota:'等额度重置', waiting_for_writer:'等会话写完',
+  completed:'已完成', fatal_error:'出错停止', transient_error:'临时错误，重试中',
+  stopped_by_user:'已手动停止', resume_cap_reached:'续跑次数用完',
+  running:'Codex 运行中', queue_idle:'队列空闲',
+};
+const KIND = {now:'现在', redeem:'兑换', weekly:'周重置', blocked:'卡住', expire:'作废', gap:'…', end:'终点'};
+
+// One plain object every skin reads from.
+function model(d){
+  const q = d.quota || {}, rl = q.rateLimits || {};
+  const p = rl.primary || {}, s = rl.secondary || {};
+  const plan = d.plan && d.plan.ok ? d.plan : null;
+  const credits = (d.credits || []).map((c, i) => ({
+    ...c, letter: String.fromCharCode(65 + i),
+    expired: c.secondsLeft <= 0, soon: c.secondsLeft > 0 && c.secondsLeft < 2 * 86400,
+  }));
+  const side = key => {
+    if (!plan) return null;
+    const b = plan[key];
+    const at = {};
+    for (const r of (b.redeems || [])) at[r.credit] = r.t;
+    for (const i of (b.lapses || [])) at[i] = 'lapse';
+    const nowEv = (b.timeline || []).find(e => e.kind === 'now');
+    const reason = nowEv && !['现在', '现在执行'].includes(nowEv.reason) ? nowEv.reason : '';
+    const alt = b.alternatives && b.alternatives[0];
+    return {
+      label: b.best.label, value: b.best.value, hours: b.horizonHours, allTied: b.allTied,
+      alt: alt ? {label: alt.label, delta: Math.abs(alt.delta)} : null,
+      timeline: b.timeline || [], at, reason, end: d.horizon + (key === 'long' ? 30 * 86400 : 0),
+    };
+  };
+  const st = d.state || {}, dm = d.daemon || {};
+  return {
+    d, now: d.now,
+    p5: {used: Math.round(p.usedPercent || 0), resetsAt: p.resetsAt},
+    w7: {used: Math.round(s.usedPercent || 0), resetsAt: s.resetsAt},
+    reached: !!rl.rateLimitReachedType, planType: rl.planType || '--',
+    credits, plan, short: side('short'), long: side('long'),
+    planReason: d.plan && !d.plan.ok ? d.plan.reason : '',
+    k: plan && plan.k, rate: plan && plan.rate, samples: plan && plan.rateSamples,
+    weeklyLeft: plan && plan.weeklyLeftWU,
+    daemon: {running: !!dm.running, pid: dm.pid, stopping: !!dm.stopRequested},
+    status: st.status, statusZh: STATUS[st.status] || st.status || '--',
+    resumes: st.resume_count ?? 0, lastReset: st.last_reset_at,
+    session: st.target_session || '', cwd: st.target_cwd || '',
+    quotaAge: d.quotaAge, quotaError: d.quotaError || '', log: d.log || '',
+    horizon: d.horizon,
+  };
+}
+const fix2 = v => (v == null ? '--' : Number(v).toFixed(2));
+// expiresAt 为空的 Reset 永不过期（后端把它换成了很远的将来，并标 noExpiry）
+const expClock = c => c.noExpiry ? '不过期' : clock(c.expiresAt);
+const expLeft = (c, fmt) => c.noExpiry ? '—' : L(c.expiresAt, fmt);
+const daemonText = m => m.daemon.running ? '运行中' : m.daemon.stopping ? '正在停止' : '未运行';
+const ageText = m => m.quotaAge == null ? '尚未读取' : m.quotaAge < 60 ? '刚刚读取' : Math.round(m.quotaAge/60) + ' 分钟前读取';
+const plannedText = (side, i) => {
+  if (!side) return '--';
+  const v = side.at[i];
+  if (v === 'lapse') return '作废';
+  if (v == null) return '—';
+  return Math.abs(v - nowTs()) < 90 ? '现在' : clock(v);
+};
+// which constraint is binding right now
+const binding = m => m.p5.used >= m.w7.used ? 'p5' : 'w7';
+
+const switcher = () => '<span class="skins">' + Object.entries(SKINS)
+  .map(([k, v]) => `<button class="${k === skin ? 'on' : ''}" data-skin="${k}">${v.name}</button>`).join('') + '</span>';
+
+// ================================================================== 朱墨
+function renderZhumo(m){
+  const S = m.short, Lg = m.long;
+  const head = S
+    ? `现在，<span class="ver">${esc(S.label)}。</span>`
+    : `现在，<span class="ver">暂无建议。</span>`;
+  const sub = S
+    ? `到 ${clock(S.end)} 还能用 ${fix2(S.value)} 个窗口额度。若再续订一个月：${esc(Lg.label)}，共 ${fix2(Lg.value)}。`
+    : esc(m.planReason || m.quotaError || '还没有足够的样本。');
+  const ruler = (used, hot) => `<div class="zm-ruler"><i class="${hot ? 'ver' : ''}" style="width:${Math.min(used,100)}%"></i>`
+    + [25,50,75,100].map(x => `<span style="left:calc(${x}% - 1px)"></span>`).join('') + '</div>';
+  const b = binding(m);
+  const pct = (v, hot) => hot ? `<em class="zm-quan">${v}%</em>` : `${v}%`;
+
+  const notes = [];
+  if (S && S.alt) notes.push(`不续订时，次选「${esc(S.alt.label)}」少 ${S.alt.delta.toFixed(2)}。`);
+  if (Lg && Lg.alt) notes.push(`续订一个月时，次选「${esc(Lg.alt.label)}」少 ${Lg.alt.delta.toFixed(2)}。`);
+  if (S && S.reason) notes.push(esc(S.reason) + '。');
+  if (m.plan) notes.push(`K≈${m.k}：周额度约等于 ${m.k} 个五小时窗口；消耗速度 ${m.rate} 窗口/小时（${m.samples} 段样本）。`);
+  if (m.quotaError) notes.push('额度读取失败：' + esc(m.quotaError));
+  const inkNotes = ['兑换要求某个窗口剩余低于 80%。本工具只给建议，不会自动兑换。'];
+
+  const rows = m.credits.length ? m.credits.map((c, i) => {
+    const sp = plannedText(S, i), lp = plannedText(Lg, i);
+    const ours = S && S.at[i] != null && S.at[i] !== 'lapse' &&
+      Object.values(S.at).filter(v => v !== 'lapse').sort()[0] === S.at[i];
+    return `<tr class="${ours ? 'ours' : ''}"><td>Reset ${c.letter}</td><td class="m">${expClock(c)}</td>
+      <td>${c.expired ? '已过期' : expLeft(c)}</td>
+      <td class="m ${sp === '作废' ? 'lapse' : ''}">${sp}</td><td class="m ${lp === '作废' ? 'lapse' : ''}">${lp}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="lapse">没有储备 Reset。</td></tr>`;
+
+  const tl = (side, title, sub2) => side ? `<div><h4>${title}<small>${sub2}</small></h4><ol class="zm-tl">`
+    + side.timeline.map(e => `<li class="${e.kind}"><span class="t">${e.kind === 'now' ? '现在' : clock(e.t)}</span>
+        <span><b>${esc(e.label)}</b>${e.reason && e.kind !== 'now' ? '<em>' + esc(e.reason) + '</em>' : ''}</span></li>`).join('')
+    + '</ol></div>' : '';
+
+  const dots = ['waiting_for_quota', 'checking_quota', 'waiting_for_writer'];
+  const di = dots.indexOf(m.status);
+  return `<div class="zm">
+    <header class="zm-run"><span>Codex · 自动续跑 · 控制台</span>
+      <span><span data-clock>${clock(nowTs(), true)}</span> · 守护 <b>${daemonText(m)}</b>${switcher()}</span></header>
+    <section class="zm-head"><h1>${head}</h1><p class="zm-sub">${sub}</p></section>
+    <div class="zm-body">
+      <main class="zm-main">
+        <ol class="zm-claims">
+          <li><span class="n">1</span><div><p>五小时窗口已用 ${pct(m.p5.used, b === 'p5' && m.p5.used >= 70)}，
+            ${m.p5.resetsAt ? `<span class="zm-key">${clock(m.p5.resetsAt)}</span> 重置，还有 ${L(m.p5.resetsAt)}。` : '重置时间未知。'}<sup>1</sup></p>
+            ${ruler(m.p5.used, b === 'p5' && m.p5.used >= 70)}</div></li>
+          <li><span class="n">2</span><div><p>周额度已用 ${pct(m.w7.used, b === 'w7' && m.w7.used >= 70)}，
+            ${m.w7.resetsAt ? `<span class="zm-key">${clock(m.w7.resetsAt)}</span> 重置，还有 ${L(m.w7.resetsAt)}。` : '重置时间未知。'}
+            ${m.weeklyLeft != null ? `<span class="small">约剩 ${m.weeklyLeft} 个窗口。</span>` : ''}</p>
+            ${ruler(m.w7.used, b === 'w7' && m.w7.used >= 70)}</div></li>
+          <li><span class="n">3</span><p>守护进程${daemonText(m)}${m.daemon.pid ? '（PID ' + esc(m.daemon.pid) + '）' : ''}，
+            正在「${esc(m.statusZh)}」，已续跑 ${m.resumes} 次。${m.lastReset ? '上次重置 <span class="nb">' + clock(m.lastReset) + '</span>。' : ''}</p></li>
+          <li><span class="n">4</span><p>会话 <span class="small">${esc(m.session.slice(0, 8) || '--')}…</span>，
+            目录 <span class="small">${esc(m.cwd || '--')}</span>；额度${m.reached ? '已耗尽' : '可用'}，账户 ${esc(m.planType)}。</p></li>
+        </ol>
+        <h3 class="zm-label">对照表 · Reserve resets</h3>
+        <table class="zm-table"><thead><tr><th>枚</th><th>到期</th><th>剩余</th><th>不续订时兑换</th><th>续订时兑换</th></tr></thead>
+          <tbody>${rows}</tbody></table>
+      </main>
+      <section class="zm-hz"><h3 class="zm-label">图版 · Two horizons</h3>
+        <div class="zm-tl2">${tl(S, '本次订阅后不再续订', S ? `到 ${clock(S.end)} · ${fix2(S.value)} 个窗口` : '')}
+          ${tl(Lg, '再续订一个月', Lg ? `到 ${clock(Lg.end)} · ${fix2(Lg.value)} 个窗口` : '')}</div>
+        ${S || Lg ? '' : '<p class="zm-tl-empty">还没有足够的样本画时间线。</p>'}</section>
+      <aside class="zm-notes"><h3 class="zm-label">评 · Notes</h3><ol>
+        ${notes.map(n => `<li>${n}</li>`).join('')}${inkNotes.map(n => `<li class="ink">${n}</li>`).join('')}</ol>
+        <div class="zm-ctl"><h3 class="zm-label">控 · Controls</h3><div class="dock-slot"></div></div></aside>
+    </div>
+    <div class="zm-lower">
+      <section class="zm-tixwrap"><h3 class="zm-label">工单 · Tickets</h3><div class="tix-slot"></div></section>
+      <section class="zm-rubbing"><div><h2>日志<small>codex_auto_resume.log · 最近 25 行</small></h2>
+        <pre>${esc(connError ? '控制台连接失败：' + connError + '\n\n' + m.log : m.log || '（空）')}</pre></div></section>
+    </div>
+    <footer class="zm-foot">
+      <span><span class="zm-dots">${dots.map((_, i) => `<i class="${i === di ? 'on' : ''}"></i>`).join('')}<i class="${di < 0 ? 'on' : ''}"></i></span>§ 守护 · ${esc(m.statusZh)}</span>
+      <span><button class="zm-act" data-act="refresh">刷新</button><button class="zm-act" data-act="stop">停止守护</button></span>
+    </footer>
+  </div>`;
+}
+
+// ================================================================== 赛马
+function renderRace(m){
+  const S = m.short, Lg = m.long;
+  const silks = ['hoops', 'stripes', 'quartered', 'sash', 'spots', 'diamonds'];
+  const kindCloth = {now: 3, redeem: 5, weekly: 6, blocked: 2, expire: 8, gap: 1, end: 1};
+  const lane = (n, name, en, used, ts) => `<div class="rc-lane"><span class="cloth k${n}">${n}</span>
+    <span class="nm">${name}<small>${en}</small></span>
+    <div class="rc-track"><span class="rail"></span>${[25,50,75].map(x => `<span class="pole" style="left:${x}%"></span>`).join('')}
+      <span class="finish"></span><span class="run" style="width:${Math.min(used,100)}%;background:${used >= 100 ? 'var(--c3)' : 'var(--black)'}"></span>
+      <span class="horse" style="left:${Math.min(Math.max(used,2),98)}%"><span class="cloth sm k${n}">${n}</span></span></div>
+    <span class="res">${used}% 已用<small>${ts ? '重置 ' + clock(ts) + ' · ' + L(ts, 'short') : '重置时间未知'}</small></span></div>`;
+
+  const runners = m.credits.length ? m.credits.map((c, i) => {
+    const sp = plannedText(S, i), lp = plannedText(Lg, i);
+    const cell = v => v === '作废' ? '<span class="nr">NR</span>' : `<span class="fig">${v}</span>`;
+    return `<tr><td><span class="cloth k${(i % 6) + 3}">${i + 3}</span></td><td><span class="silk ${silks[i % silks.length]}"></span></td>
+      <td class="rn">Reset ${c.letter}<small>${c.expired ? '已过期' : c.soon ? '两天内到期' : '可用'}</small></td>
+      <td class="fig">${expClock(c)}</td><td class="fig">${c.expired ? '—' : expLeft(c, 'short')}</td>
+      <td>${cell(sp)}</td><td>${cell(lp)}</td></tr>`;
+  }).join('') : '<tr><td colspan="7">没有储备 Reset 参赛。</td></tr>';
+
+  const card = (side, title) => side ? `<div><h3>${title}<small>到 ${clock(side.end)}</small></h3><ol>`
+    + side.timeline.map(e => `<li><span class="cloth sm k${kindCloth[e.kind] || 1}"></span><span class="t">${e.kind === 'now' ? '现在' : clock(e.t)}</span>
+      <span class="l">${esc(e.label)}${e.reason && e.kind !== 'now' ? '<em>' + esc(e.reason) + '</em>' : ''}</span></li>`).join('') + '</ol></div>' : '';
+
+  const sel = (tag, side, title) => side ? `<div class="row"><div><span class="tag">${tag}</span><span class="big">${fix2(side.value)}</span></div>
+    <div class="txt"><b>${esc(side.label)}</b><span>${title}${side.reason ? ' · ' + esc(side.reason) : ''}</span></div></div>` : '';
+
+  return `<div class="rc">
+    <header class="rc-head">
+      <div class="rc-race" title="续跑次数"><span>RACE</span><b>${m.resumes}</b><small>续跑次数</small></div>
+      <div class="rc-title"><div class="rc-kick"><span class="cloth sm k3">1</span>Today's card · Codex 自动续跑 · <span data-clock>${clock(nowTs(), true)}</span></div>
+        <h1>${S ? esc(S.label) : '暂无建议'}</h1>
+        <p>Conditions：${m.plan ? `K≈${m.k} · 速度 ${m.rate} 窗口/小时 · ` : esc(m.planReason) + ' · '}订阅到 ${m.horizon ? clock(m.horizon) : '--'} · ${ageText(m)}</p></div>
+      <div class="rc-acts">${switcher()}<button class="rc-btn" data-act="refresh">刷新</button><button class="rc-btn stop" data-act="stop">停止守护</button></div>
+    </header>
+    <div class="rc-wrap"><div class="rc-grid"><div>
+      <h2 class="rc-h">The going · 额度赛道</h2>
+      <div class="rc-lanes">${lane(1, '五小时窗口', '5-hour window', m.p5.used, m.p5.resetsAt)}${lane(2, '周额度', 'Weekly', m.w7.used, m.w7.resetsAt)}</div>
+      <div class="rc-finish-lbl"><span><i style="font-style:normal">Start · 0%</i><i style="font-style:normal">Mid-race</i><b>Finish · 用尽</b></span></div>
+
+      <h2 class="rc-h">Runners · 储备 Reset</h2>
+      <table class="rc-table"><thead><tr><th>No.</th><th>Silks</th><th>Runner</th><th>到期</th><th>Form · 剩余</th><th>不续订时出闸</th><th>续订时出闸</th></tr></thead>
+        <tbody>${runners}</tbody></table>
+        <h2 class="rc-h">Today's card · 两条时间线</h2>
+        <div class="rc-card">${card(S, '不再续订')}${card(Lg, '再续订一个月')}</div>
+      </div><div>
+        <div class="rc-red"><span class="k">Tipster's verdict · 现在该做的</span>
+          <h2>${S ? esc(S.label) : '暂无建议'}</h2>
+          <p>${S ? `不续订的话，到 ${clock(S.end)} 还能用 ${fix2(S.value)} 个窗口额度。` : esc(m.planReason || m.quotaError)}</p></div>
+        <div class="rc-sel">
+          ${sel('NAP', S, '本次订阅后不再续订')}${sel('NEXT BEST', Lg, '再续订一个月')}
+          ${S && S.alt ? `<div class="row"><div><span class="tag">EACH-WAY</span><span class="big">−${S.alt.delta.toFixed(2)}</span></div>
+            <div class="txt"><b>${esc(S.alt.label)}</b><span>不续订时的次选，比首选少这么多</span></div></div>` : ''}
+        </div>
+        <div class="rc-yel"><span class="k">After the last · 守护进程</span>
+        <h2>Stewards' enquiry</h2>
+        <dl><dt>状态</dt><dd>${daemonText(m)} · ${esc(m.statusZh)}</dd>
+          <dt>PID</dt><dd>${esc(m.daemon.pid || '--')}</dd>
+          <dt>上次重置</dt><dd>${m.lastReset ? clock(m.lastReset) : '--'}</dd>
+          <dt>会话</dt><dd title="${esc(m.session)}">${esc(m.session || '--')}</dd>
+          <dt>目录</dt><dd title="${esc(m.cwd)}">${esc(m.cwd || '--')}</dd>
+          <dt>额度</dt><dd>${m.reached ? '已耗尽' : '可用'} · ${esc(m.planType)}</dd></dl>
+        <div class="rc-ctl"><span class="k">Stewards' controls · 参数</span><div class="dock-slot"></div></div></div>
+      </div></div>
+    </div>
+    <section class="rc-stew">
+      <div class="rc-tixcol"><span class="k">Entries · 工单</span><div class="tix-slot"></div></div>
+      <div class="rc-blk"><div><div class="k">Form guide · 日志</div>
+        <pre>${esc(connError ? '控制台连接失败：' + connError + '\n\n' + m.log : m.log || '（空）')}</pre></div></div>
+    </section>
+    <div class="rc-strip">${'<i></i>'.repeat(8)}</div>
+    <footer class="rc-foot"><span>Codex auto-resume · Race card</span><span>All results provisional · 建议不会自动执行</span></footer>
+  </div>`;
+}
+
+// ================================================================= shell
+const SKINS = {
+  zhumo: {name: '朱墨', render: renderZhumo},
+  race:  {name: '赛马', render: renderRace},
+};
+let skin = new URLSearchParams(location.search).get('skin') || localStorage.getItem(SKIN_KEY) || 'zhumo';
+if (!SKINS[skin]) skin = 'zhumo';
+
+let pendingPaint = false;
+// 参数面板和工单面板是常驻节点：每次重绘先挪出 #app，再放进当前皮肤留的位置
+const PANELS = [['dock', '.dock-slot'], ['tix', '.tix-slot']];
+const typing = () => {
+  const a = document.activeElement;
+  return PANELS.some(([id]) => document.getElementById(id).contains(a))
+    && (a.tagName === 'SELECT' || a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox', 'file'].includes(a.type)));
+};
+function paint(force){
+  if (!force && typing()) { pendingPaint = true; return; }   // 正在输入：等失焦后再重绘
+  pendingPaint = false;
+  document.body.className = skin;
+  renderDock();
+  renderTix();
+  if (!last) {
+    document.getElementById('app').innerHTML = '<p style="padding:40px">读取中…</p>';
+    return;
+  }
+  const panels = PANELS.map(([id, sel]) => [document.getElementById(id), sel]);
+  for (const [el] of panels) document.body.appendChild(el);
+  document.getElementById('app').innerHTML = SKINS[skin].render(model(last));
+  for (const [el, sel] of panels) {
+    const slot = document.querySelector('#app ' + sel);
+    if (slot) { slot.appendChild(el); el.classList.add('placed'); }
+    else el.classList.remove('placed');
+  }  for (const pre of document.querySelectorAll('.zm-rubbing pre, .rc-blk pre')) pre.scrollTop = pre.scrollHeight;   // 日志停在最新一行
+}
+for (const [id] of PANELS) document.getElementById(id).addEventListener('focusout', () => setTimeout(() => {
+  if (pendingPaint && !typing()) paint();
+}, 0));
+
+async function load(){
+  try{
+    const r = await fetch('/api/status', {cache: 'no-store'});
+    last = await r.json();
+    fetchedAt = Date.now() / 1000;
+    connError = '';
+  }catch(e){
+    connError = String(e);
+  }
+  paint();
+}
+
+document.addEventListener('click', async e => {
+  const s = e.target.closest('[data-skin]');
+  if (s) { skin = s.dataset.skin; localStorage.setItem(SKIN_KEY, skin); paint(true); return; }
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  if (a.dataset.act === 'refresh') { await fetch('/api/refresh', {method: 'POST'}); load(); }
+  if (a.dataset.act === 'stop') {
+    if (!confirm('请求守护进程停止？\n下一轮检查（最多 30 秒）生效。')) return;
+    await fetch('/api/stop', {method: 'POST'}); load();
+  }
+});
+
+// countdowns and the clock tick locally between fetches
+setInterval(() => {
+  const t = nowTs();
+  for (const el of document.querySelectorAll('[data-left]')) {
+    const v = Number(el.dataset.left) - t;
+    el.textContent = el.dataset.fmt === 'short' ? leftShort(v) : left(v);
+  }
+  for (const el of document.querySelectorAll('[data-clock]')) el.textContent = clock(t, true);
+}, 1000);
+
+paint();
+load();
+setInterval(load, 10000);
+/* ---- 控制面板 ---- */
+const $d = id => document.getElementById(id);
+
+function dockLiveCredits(){
+  const list = (last && last.credits) || [];
+  return list.filter(c => c.secondsLeft > 0);
+}
+
+function renderDock(){
+  if (!last) return;
+  const ctl = last.control || {};
+  const st = last.state || {};
+
+  const maxInput = $d('dockMax');
+  if (document.activeElement !== maxInput) {
+    maxInput.value = (ctl.maxResumes === null || ctl.maxResumes === undefined) ? '' : ctl.maxResumes;
+  }
+  $d('dockCount').textContent = (st.resume_count ?? 0) + ' 次';
+
+  const auto = $d('dockAuto');
+  auto.checked = !!ctl.autoRedeem;
+  const minWait = (last.settings && last.settings.autoRedeemMinWaitMinutes) ?? 60;
+  $d('dockAutoState').textContent = ctl.autoRedeem ? `开 · 耗尽且离重置超过 ${minWait} 分钟时兑换` : '关';
+
+  const sel = $d('dockCredit');
+  const keep = sel.value;
+  const items = dockLiveCredits();
+  if (!items.length) {
+    sel.innerHTML = '<option value="">没有可用的 Reset</option>';
+  } else {
+    sel.innerHTML = items.map(c => {
+      const d = Math.max(0, Math.round(c.secondsLeft / 86400));
+      return '<option value="' + esc(c.id) + '">' + (c.noExpiry ? '不过期' : expClock(c) + ' 到期 · 剩 ' + d + ' 天') + '</option>';
+    }).join('');
+    if (keep && items.some(c => c.id === keep)) sel.value = keep;
+  }
+}
+
+async function dockPost(url, body){
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body || {})
+  });
+  return r.json();
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-dock]');
+  if (!b) return;
+  const act = b.dataset.dock;
+
+  if (act === 'queue-pause') {
+    const paused = !!(last && last.queue && last.queue.paused);
+    await dockPost('/api/control', {queuePause: !paused});
+    $d('tixMsg').textContent = paused ? '队列继续派活' : '队列暂停：当前工单跑完后不再取新的';
+    await load();
+    return;
+  }
+
+  if (act === 'apply-max') {
+    const raw = $d('dockMax').value.trim();
+    const value = raw === '' ? null : Number(raw);
+    if (value !== null && (!Number.isFinite(value) || value < 0)) {
+      $d('dockMsg').textContent = '续跑上限必须是非负整数';
+      return;
+    }
+    await dockPost('/api/control', {maxResumes: value});
+    $d('dockMsg').textContent = '续跑上限已更新' + (value === null ? '（跟随启动参数）' : value === 0 ? '（无限）' : '（' + value + ' 次）');
+    await load();
+    return;
+  }
+
+  if (act === 'clear-count') {
+    await dockPost('/api/control', {resetCount: true});
+    $d('dockMsg').textContent = '已请求清零，守护进程下一轮生效';
+    await load();
+    return;
+  }
+
+  if (act === 'redeem') {
+    const id = $d('dockCredit').value;
+    if (!id) { $d('dockMsg').textContent = '没有可用的 Reset'; return; }
+    const pv = await dockPost('/api/redeem', {creditId: id});            // 先预览，不消耗
+    if (!pv.ok) { $d('dockMsg').textContent = pv.reason || '失败'; return; }
+    const left = '五小时窗口剩 ' + pv.wouldReset.fiveHourLeft + '%，周额度剩 ' + pv.wouldReset.weeklyLeft + '%';
+    if (!pv.eligible) { $d('dockMsg').textContent = left + '。两个窗口剩余都不低于 80%，现在兑换不了。'; return; }
+    const label = $d('dockCredit').selectedOptions[0].textContent;
+    if (!confirm('兑换这枚 Reset（' + label + '）？\n\n' + left + '。\n兑换后额度窗口立即重置，这枚 Reset 会被用掉，不能撤销。')) return;
+    $d('dockMsg').textContent = '兑换中…';
+    const r = await dockPost('/api/redeem', {creditId: id, confirm: 'REDEEM'});
+    $d('dockMsg').textContent = r.reason || (r.ok ? '已兑换' : '兑换失败');
+    await load();
+    return;
+  }
+});
+
+document.addEventListener('change', async e => {
+  if (e.target && e.target.id === 'dockAuto') {
+    const on = e.target.checked;
+    if (on && !confirm('打开自动兑换？\n\n额度耗尽、而且离五小时窗口自动重置还早时，守护进程会自己兑换最早到期的 Reset。\n这会真的消耗 Reset。')) {
+      e.target.checked = false;
+      return;
+    }
+    await dockPost('/api/control', {autoRedeem: on});
+    $d('dockMsg').textContent = on
+      ? '自动兑换已开启：额度耗尽、而且离自动重置还早时，守护进程会兑换最早到期的 Reset'
+      : '自动兑换已关闭';
+    await load();
+  }
+});
+
+/* ---- 工单面板 ---- */
+const BOX_ZH = {running: '在跑', inbox: '待派', failed: '失败', done: '完成'};
+const ago = ts => {
+  const s = nowTs() - ts;
+  return s < 3600 ? Math.max(1, Math.round(s / 60)) + ' 分钟前' : s < 86400 ? Math.round(s / 3600) + ' 小时前' : clock(ts);
+};
+
+function renderTix(){
+  if (!last) return;
+  const q = last.queue;
+  const list = $d('tixList');
+  if (!q) return;
+  $d('tixDir').textContent = q.dir;
+  $d('tixDir').title = q.dir;
+  $d('tixRoots').innerHTML = q.error ? `<span class="tx-warn">${esc(q.error)}</span>`
+    : (q.roots || []).length ? q.roots.map(r => `<span class="tx-chip" title="${esc(r)}">${esc(r)}<button type="button" data-tixset="rm-root" data-root="${esc(r)}" title="移除">×</button></span>`).join('')
+    : '<span class="tx-warn">还没有：先添加，Codex 只能在这些目录下面干活</span>';
+  if (q.error) return;
+  const opts = [...new Set([...(q.recentCwd || []), ...(q.roots || [])])];
+  $d('tixCwds').innerHTML = opts.map(c => `<option value="${esc(c)}">`).join('');
+  const cwd = $d('tixForm').elements.cwd;
+  if (!cwd.value && opts.length) cwd.value = opts[0];
+
+  const t = q.tickets || {};
+  const grp = box => {
+    const rows = t[box] || [];
+    const count = box === 'done' ? t.doneCount : box === 'failed' ? t.failedCount : rows.length;
+    if (!rows.length && (box === 'done' || box === 'failed')) return '';
+    const items = rows.length ? rows.map(r => {
+      const sub = box === 'running' ? (r.resumes ? '续跑 ' + r.resumes + ' 次' : '运行中')
+        : box === 'inbox' ? '排队' : box === 'failed' ? (r.reason || '失败') : ago(r.mtime);
+      return `<button type="button" class="tx-item" data-tix-open="${box}" data-name="${esc(r.name)}" title="${esc(r.name + (r.cwd ? '\n' + r.cwd : ''))}">
+        <span class="dot ${box}"></span><span class="nm">${esc(r.title)}</span><span class="sub">${esc(sub)}</span></button>`;
+    }).join('') : `<p class="tx-empty">${box === 'running' ? (q.paused ? '队列已暂停' : '空闲') : '没有'}</p>`;
+    const tail = box === 'running'
+      ? `<button type="button" class="tx-pause" data-dock="queue-pause">${q.paused ? '继续派活' : '暂停派活'}</button>` : `<span>${count}</span>`;
+    return `<div class="tx-grp"><h4><span>${BOX_ZH[box]}</span>${tail}</h4>${items}</div>`;
+  };
+  list.innerHTML = ['running', 'inbox', 'failed', 'done'].map(grp).join('');
+}
+
+const readB64 = f => new Promise((ok, bad) => {
+  const r = new FileReader();
+  r.onload = () => ok(String(r.result).split(',', 2)[1] || '');
+  r.onerror = () => bad(r.error);
+  r.readAsDataURL(f);
+});
+
+$d('tixForm').addEventListener('change', e => {
+  if (e.target.name === 'files') $d('tixFiles').textContent = [...e.target.files].map(f => f.name).join('、');
+});
+
+$d('tixForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target.elements, btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  $d('tixMsg').textContent = '提交中…';
+  try {
+    const files = [];
+    for (const file of f.files.files) files.push({name: file.name, b64: await readB64(file)});
+    const r = await dockPost('/api/tickets/submit', {
+      title: f.title.value, cwd: f.cwd.value.trim(), sandbox: f.sandbox.value,
+      maxResumes: f.maxResumes.value, body: f.body.value, files,
+    });
+    if (!r.ok) { $d('tixMsg').textContent = r.reason || '提交失败'; return; }
+    f.title.value = ''; f.body.value = ''; f.files.value = ''; $d('tixFiles').textContent = '';
+    $d('tixMsg').textContent = '已排队：' + r.name;
+    await load();
+  } catch (err) {
+    $d('tixMsg').textContent = '提交失败：' + err;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function openTicket(box, name){
+  const dlg = $d('tixDlg');
+  $d('tixDlgTitle').textContent = name;
+  $d('tixDlgMeta').textContent = BOX_ZH[box] || box;
+  $d('tixDlgBody').textContent = '读取中…';
+  $d('tixDlgActs').innerHTML = '';
+  if (!dlg.open) dlg.showModal();
+  const r = await (await fetch('/api/ticket?box=' + encodeURIComponent(box) + '&name=' + encodeURIComponent(name), {cache: 'no-store'})).json();
+  if (!r.ok) { $d('tixDlgBody').textContent = r.reason || '读取失败'; return; }
+  const m = r.meta || {};
+  $d('tixDlgMeta').textContent = [BOX_ZH[box], m.cwd, m.session ? '会话 ' + m.session.slice(0, 8) : '',
+    m.resumes ? '续跑 ' + m.resumes + ' 次' : '', m.finished_at ? m.finished_at.replace('T', ' ').slice(0, 16) : '']
+    .filter(Boolean).join(' · ');
+  const parts = [];
+  if (m.reason) parts.push(`<h5>原因</h5><pre>${esc(m.reason)}</pre>`);
+  if (r.result) parts.push(`<h5>Codex 交付总结</h5><pre>${esc(r.result)}</pre>`);
+  else if (box === 'done' || box === 'failed') parts.push('<h5>Codex 交付总结</h5><pre>（没有记录到最后一条消息，原始输出在 run.jsonl）</pre>');
+  parts.push(`<details ${r.result ? '' : 'open'}><summary>工单原文${r.files.length ? ' · 附件 ' + r.files.length + ' 个' : ''}</summary>
+    <pre class="code">${esc(r.ticket)}</pre>${r.files.length ? '<pre class="code">' + r.files.map(esc).join('\n') + '</pre>' : ''}</details>`);
+  $d('tixDlgBody').innerHTML = parts.join('');
+  $d('tixDlgActs').innerHTML = box === 'inbox' ? '<button type="button" class="dk-btn danger" data-tix="withdraw">撤回</button>'
+    : box === 'failed' ? '<button type="button" class="dk-btn" data-tix="retry">重派（新会话）</button>' : '';
+  $d('tixDlgActs').dataset.name = name;
+}
+
+document.addEventListener('click', async e => {
+  const o = e.target.closest('[data-tix-open]');
+  if (o) { openTicket(o.dataset.tixOpen, o.dataset.name); return; }
+  const b = e.target.closest('[data-tix]');
+  if (!b) return;
+  const dlg = $d('tixDlg'), name = $d('tixDlgActs').dataset.name;
+  if (b.dataset.tix === 'close') { dlg.close(); return; }
+  if (b.dataset.tix === 'withdraw' && !confirm('撤回「' + name + '」？它会挪进「失败」，不会删除。')) return;
+  const r = await dockPost('/api/tickets/' + b.dataset.tix, {name});
+  if (!r.ok) { $d('tixDlgBody').insertAdjacentHTML('afterbegin', `<h5>操作失败</h5><pre>${esc(r.reason || '')}</pre>`); return; }
+  dlg.close();
+  $d('tixMsg').textContent = b.dataset.tix === 'retry' ? '已重新排队：' + name : '已撤回：' + name;
+  await load();
+});
+$d('tixDlg').addEventListener('click', e => { if (e.target === $d('tixDlg')) $d('tixDlg').close(); });
+
+// 在跑控制台的这台电脑上弹系统的选择文件夹框；弹不出来就退回手动输入
+async function pickFolder(initial, title){
+  $d('tixMsg').textContent = '已在桌面弹出选择框（可能在浏览器窗口后面）…';
+  const r = await dockPost('/api/pick-folder', {initial: initial || '', title});
+  $d('tixMsg').textContent = '';
+  if (r.ok) return r.cancelled ? null : r.path;
+  return prompt((r.reason || '弹不出选择框') + '\n\n手动输入路径：', initial || '');
+}
+async function saveSettings(body, okMsg){
+  const r = await dockPost('/api/settings', body);
+  $d('tixMsg').textContent = r.ok ? okMsg : (r.reason || '保存失败');
+  await load();
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-tixset]');
+  if (!b) return;
+  e.preventDefault();
+  const q = (last && last.queue) || {};
+  const roots = q.roots || [];
+  const act = b.dataset.tixset;
+  if (act === 'pick-dir' || act === 'edit-dir') {
+    const p = act === 'pick-dir' ? await pickFolder(q.dir, '选择工单队列目录') : prompt('工单队列目录：', q.dir || '');
+    if (p && p.trim() && p.trim() !== q.dir)
+      await saveSettings({queueDir: p.trim()}, '队列目录已改为 ' + p.trim() + '；正在跑的队列会在下一轮切过去');
+  } else if (act === 'add-root') {
+    const p = await pickFolder(roots[0] || '', '添加允许的工作目录');
+    if (p && p.trim()) await saveSettings({allowedRoots: [...roots, p.trim()]}, '已添加：' + p.trim());
+  } else if (act === 'rm-root') {
+    if (confirm('不再允许在这个目录下派活？\n' + b.dataset.root))
+      await saveSettings({allowedRoots: roots.filter(r => r !== b.dataset.root)}, '已移除：' + b.dataset.root);
+  } else if (act === 'pick-cwd') {
+    const cwd = $d('tixForm').elements.cwd;
+    const p = await pickFolder(cwd.value || roots[0] || '', '选择这张工单的工作目录');
+    if (p) cwd.value = p;
+  }
+});
+</script>
+</body>
+</html>

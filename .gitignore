@@ -1,0 +1,13 @@
+# 运行时文件
+*.log
+codex_auto_resume_state.json
+daemon.pid
+control.json
+settings.json
+telemetry.jsonl
+STOP
+*.tmp
+__pycache__/
+
+# 字体子集不随仓库分发，用 tools/build_fonts.py 自己生成
+fonts/*.woff2
