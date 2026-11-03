@@ -827,64 +827,40 @@ def ensure_app_server(app_server):
     app_server.start()
 
 
+def _window_full(window):
+    used = window.get("usedPercent") if isinstance(window, dict) else None
+    return isinstance(used, (int, float)) and used >= 100
+
+
 def quota_available(rate_limits):
-    """Return whether the primary quota window is currently available."""
-
-    primary = rate_limits.get(
-        "primary"
-    )
-
-    reached_type = rate_limits.get(
-        "rateLimitReachedType"
-    )
-
-    if reached_type:
+    """Return whether both the 5-hour (primary) and weekly (secondary) windows are available."""
+    if rate_limits.get("rateLimitReachedType"):
         return False
-
-    if not isinstance(primary, dict):
-        return True
-
-    used_percent = primary.get(
-        "usedPercent"
-    )
-
-    if isinstance(
-        used_percent,
-        (int, float),
-    ):
-        if used_percent >= 100:
-            return False
-
-    return True
+    return not any(_window_full(rate_limits.get(k)) for k in ("primary", "secondary"))
 
 
-def get_primary_reset_at(
+def get_blocking_reset_at(
     rate_limits,
 ):
-    """Return the primary reset timestamp when supplied by app-server."""
-    primary = rate_limits.get(
-        "primary"
-    )
+    """Return (resetsAt, window name) of the window that blocks us.
 
-    if not isinstance(
-        primary,
-        dict,
-    ):
-        return None
-
-    reset_at = primary.get(
-        "resetsAt"
-    )
-
-    if isinstance(
-        reset_at,
-        (int, float),
-    ):
-        return int(
-            reset_at
-        )
-
-    return None
+    Full windows win, and with both full the later reset counts. With none at
+    100% (blocked only by rateLimitReachedType) the fuller window is taken.
+    """
+    windows = [
+        (name, rate_limits.get(name))
+        for name in ("primary", "secondary")
+        if isinstance(rate_limits.get(name), dict)
+        and isinstance(rate_limits[name].get("resetsAt"), (int, float))
+    ]
+    full = [(w["resetsAt"], name) for name, w in windows if _window_full(w)]
+    if full:
+        reset_at, name = max(full)
+        return int(reset_at), name
+    if windows:
+        name, w = max(windows, key=lambda nw: nw[1].get("usedPercent") or 0)
+        return int(w["resetsAt"]), name
+    return None, None
 
 
 def sleep_until(
@@ -1079,6 +1055,7 @@ def wait_for_quota(
     """Wait for quota using app-server without mutating the target thread."""
 
     attempt = 0
+    redeemed = False
 
     while True:
         try:
@@ -1115,10 +1092,8 @@ def wait_for_quota(
 
                 return
 
-            reset_at = (
-                get_primary_reset_at(
-                    rate_limits
-                )
+            reset_at, window = get_blocking_reset_at(
+                rate_limits
             )
 
             state["status"] = (
@@ -1143,13 +1118,22 @@ def wait_for_quota(
                 )
 
                 logger.info(
-                    "primary.resetsAt: %s",
+                    "%s.resetsAt: %s",
+                    window,
                     reset_dt.strftime(
                         "%Y-%m-%d %H:%M:%S %Z"
                     ),
                 )
 
-                if maybe_auto_redeem(app_server, state, reset_at):
+                # 兑换过一次还卡着（多半是周额度没被 Reset 解开）：不再兑换，免得把 Reset 连着用光
+                if redeemed:
+                    logger.warning(
+                        "auto-redeem: 兑换后仍卡在 %s 窗口，本轮不再兑换，等它自己重置。",
+                        window,
+                    )
+                elif maybe_auto_redeem(app_server, state, reset_at):
+                    redeemed = True
+                    time.sleep(30)  # 等兑换生效再重读
                     continue
 
                 sleep_until(
@@ -1454,7 +1438,8 @@ def main():
             rate_limits = app_server.read_rate_limits()
 
             primary = rate_limits.get("primary") or {}
-            reset_at = primary.get("resetsAt")
+            secondary = rate_limits.get("secondary") or {}
+            reset_at, window = get_blocking_reset_at(rate_limits)
 
             logger.info("Session : %s", target_session)
             logger.info("CWD     : %s", target_cwd)
@@ -1465,10 +1450,15 @@ def main():
                 primary.get("usedPercent"),
                 primary.get("windowDurationMins"),
             )
+            logger.info(
+                "weekly  : %s%% used, window %s min",
+                secondary.get("usedPercent"),
+                secondary.get("windowDurationMins"),
+            )
 
             if reset_at:
                 reset_dt = datetime.fromtimestamp(reset_at).astimezone()
-                logger.info("resetsAt: %s", reset_dt.strftime("%Y-%m-%d %H:%M:%S %Z"))
+                logger.info("resetsAt: %s (%s)", reset_dt.strftime("%Y-%m-%d %H:%M:%S %Z"), window)
                 logger.info(
                     "wait    : %.2f hours",
                     max(reset_at - time.time(), 0) / 3600,
