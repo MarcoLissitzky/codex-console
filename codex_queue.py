@@ -28,7 +28,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -37,7 +36,6 @@ import codex_auto_resume as car
 import settings as S
 from codex_auto_resume import (
     CONTINUE_PROMPT,
-    PID_FILE,
     STOP_FILE,
     AppServerClient,
     ensure_app_server,
@@ -318,7 +316,34 @@ def last_agent_message(output: str) -> str:
     return last
 
 
-def run_codex(codex: str, folder: Path, cwd: str, sandbox: str, session: str | None, prompt: str, images: list[str]):
+def thread_started_id(line: str) -> str | None:
+    """codex exec --json 的 {"type": "thread.started", "thread_id": ...} 行 → 会话号。"""
+    if "thread.started" not in line:
+        return None
+    try:
+        ev = json.loads(line)
+    except ValueError:
+        return None
+    if isinstance(ev, dict) and ev.get("type") == "thread.started":
+        return ev.get("thread_id")
+    return None
+
+
+def session_from_run_log(folder: Path) -> str | None:
+    """run.jsonl 里第一条 thread.started 的会话号（首次运行中途断掉时用来找回）。"""
+    try:
+        with open(folder / "run.jsonl", "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                sid = thread_started_id(line)
+                if sid:
+                    return sid
+    except OSError:
+        pass
+    return None
+
+
+def run_codex(codex: str, folder: Path, cwd: str, sandbox: str, session: str | None, prompt: str, images: list[str],
+              on_session=None):
     cmd = [codex, "exec", "--json", "--skip-git-repo-check", "--sandbox", sandbox, "-C", cwd]
     if session:
         cmd += ["resume", session, CONTINUE_PROMPT]
@@ -344,6 +369,10 @@ def run_codex(codex: str, folder: Path, cwd: str, sandbox: str, session: str | N
             out.append(line)
             log.write(line)
             log.flush()
+            # 会话号一出现就交给调用方存盘，不等进程结束
+            if on_session and (sid := thread_started_id(line)):
+                on_session(sid)
+                on_session = None
     return proc.wait(), "".join(out)
 
 
@@ -373,6 +402,14 @@ def work_ticket(qdir: Path, folder: Path, codex: str, app_server, state: dict, c
         return finish(qdir, folder, meta, "failed", f"缺图片：{missing}")
 
     prompt = TICKET_HEADER.format(name=folder.name, folder=folder, cwd=cwd) + body
+    if not meta.get("session") and (sid := session_from_run_log(folder)):
+        meta["session"] = sid
+        write_meta(folder, meta)
+        logger.warning("工单 %s 上次没跑完就断了，从 run.jsonl 找回会话 %s，接着续跑。", folder.name, sid)
+
+    def keep_session(sid):
+        meta["session"] = sid
+        write_meta(folder, meta)
     # 控制台的「续跑上限 / 清零」对队列同样生效：工单里的 max_resumes 是默认值，控制台设了就以控制台为准
     car.BASE_MAX_RESUMES = car.MAX_RESUMES = max_resumes
     while True:
@@ -397,8 +434,10 @@ def work_ticket(qdir: Path, folder: Path, codex: str, app_server, state: dict, c
         save_state(state)
         write_meta(folder, meta)
 
-        code, out = run_codex(codex, folder, cwd, sandbox, session, prompt, images)
+        code, out = run_codex(codex, folder, cwd, sandbox, session, prompt, images,
+                              None if session else keep_session)
         if not meta.get("session"):
+            # 没见到 thread.started（输出格式变了？）：退回旧办法，从整段输出里找
             meta["session"] = extract_session_id(out)
         msg = last_agent_message(out)
         if msg:
@@ -435,11 +474,7 @@ def main() -> None:
     fixed = Path(args.queue).resolve() if args.queue else None
     qdir = ensure_queue(fixed or S.queue_dir())
 
-    if PID_FILE.exists():
-        sys.exit(f"{PID_FILE} 已存在：守护进程或队列可能正在运行。确认没有在跑的话，删掉它再启动。")
-    PID_FILE.write_text(str(os.getpid()), encoding="ascii")
-    import atexit
-    atexit.register(lambda: PID_FILE.unlink(missing_ok=True))
+    car.acquire_pid_lock()
 
     if args.codex:
         os.environ["CODEX_CLI"] = args.codex

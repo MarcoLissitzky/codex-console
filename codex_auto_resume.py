@@ -65,8 +65,11 @@ BASE_MAX_RESUMES = 2
 # Create this file to make a running watchdog stop after its current step.
 STOP_FILE = RUNTIME_DIR / "STOP"
 
-# PID of the running daemon, written on startup and removed on exit.
+# Lock shared by the watchdog and the queue: holds the PID of the one that runs.
 PID_FILE = RUNTIME_DIR / "daemon.pid"
+
+# --check: read quota only, never write the state file.
+READ_ONLY = False
 
 # Runtime switches written by the console.
 CONTROL_FILE = RUNTIME_DIR / "control.json"
@@ -171,11 +174,79 @@ def load_state():
 
 def save_state(state):
     """Persist watchdog state atomically."""
+    if READ_ONLY:
+        return
     state["updated_at"] = datetime.now(timezone.utc).isoformat()
     temp_file = STATE_FILE.with_suffix(".tmp")
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
     os.replace(temp_file, STATE_FILE)
+
+
+# ============================================================
+# LOCK
+# ============================================================
+
+
+def pid_alive(pid):
+    if not pid:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid))
+        if not handle:
+            return False
+        code = ctypes.c_ulong()
+        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        ctypes.windll.kernel32.CloseHandle(handle)
+        return code.value == 259
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except OSError:
+        return False
+
+
+def acquire_pid_lock():
+    """Create daemon.pid atomically, or exit if a live watchdog/queue holds it.
+
+    A pid file whose process is gone (killed window, crash) is stale and gets replaced.
+    An empty file may be another starter between create and write: wait a moment first.
+    """
+    for attempt in range(5):
+        try:
+            fd = os.open(PID_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                pid = int(PID_FILE.read_text(encoding="ascii").strip())
+            except (OSError, ValueError):
+                pid = None
+            if pid and pid_alive(pid):
+                sys.exit(f"守护进程或队列已在运行（PID {pid}）：同一时间只能开一个。")
+            if pid is None and attempt == 0:
+                time.sleep(1)
+                continue
+            logger.warning("清掉残留的锁 %s（PID %s 已经不在了）。", PID_FILE, pid)
+            PID_FILE.unlink(missing_ok=True)
+            continue
+        with os.fdopen(fd, "w", encoding="ascii") as fh:
+            fh.write(str(os.getpid()))
+        import atexit
+
+        atexit.register(release_pid_lock)
+        return
+    sys.exit(f"拿不到锁 {PID_FILE}，稍后再试。")
+
+
+def release_pid_lock():
+    """Remove daemon.pid only if it is still ours."""
+    try:
+        if PID_FILE.read_text(encoding="ascii").strip() == str(os.getpid()):
+            PID_FILE.unlink()
+    except OSError:
+        pass
 
 
 # ============================================================
@@ -923,18 +994,19 @@ def parse_args():
 
 def main():
     """Run the persistent quota-wait and same-session resume state machine."""
-    global MAX_WAIT_SECONDS, MAX_RESUMES, BASE_MAX_RESUMES
+    global MAX_WAIT_SECONDS, MAX_RESUMES, BASE_MAX_RESUMES, READ_ONLY
     args = parse_args()
     MAX_WAIT_SECONDS = args.max_wait
     MAX_RESUMES = args.max_resumes
     BASE_MAX_RESUMES = args.max_resumes
-    PID_FILE.write_text(str(os.getpid()), encoding="ascii")
-    import atexit
-
-    atexit.register(lambda: PID_FILE.unlink(missing_ok=True))
+    # --check only reads quota: it must not take the lock or touch the state of a running queue
+    if args.check:
+        READ_ONLY = True
+    else:
+        acquire_pid_lock()
     if args.codex:
         os.environ["CODEX_CLI"] = args.codex
-    if args.reset_state and STATE_FILE.exists():
+    if args.reset_state and not args.check and STATE_FILE.exists():
         STATE_FILE.unlink()
     try:
         codex_path = find_codex()

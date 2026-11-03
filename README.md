@@ -69,7 +69,8 @@ images: a.png, b.png            # 可省略，路径相对工单文件夹
 
 - `cwd` 必须在 `allowed_roots` 里某个目录下面；沙箱只允许 `read-only` 和 `workspace-write`。
 - 队列开的是 `codex exec` 非交互会话，中途不会停下来问你，正文要把要求写全。
-- 守护进程（`watch.cmd`）和队列（`queue.cmd`）共用 `daemon.pid`，同一时间只能开一个。
+- 守护进程（`watch.cmd`）和队列（`queue.cmd`）共用 `runtime/daemon.pid` 这把锁，同一时间只能开一个。窗口被强关留下的锁，下次启动时会自动清掉。`watch.cmd --check` 只看额度，不拿锁。
+- 工单首次运行中途断掉时，重启会从 `run.jsonl` 找回会话号续跑，不会另开新会话。
 - 停止：在 `runtime` 文件夹里建一个 `STOP` 文件，或者点控制台的「停止守护」。
 
 ## 只续跑一个会话
@@ -128,6 +129,7 @@ watch.cmd --session <ID> --max-resumes 0   rem 一直续到任务结束
 - 如果你的 `~/.codex/config.toml` 设了 `sandbox_mode = "danger-full-access"`，脚本会用 `--sandbox` 覆盖掉。无人值守时别改成完全访问。
 - 电脑睡眠时它也睡；醒来如果已经过了重置时间，会马上接着跑。
 - 它不会绕过限额。额度用完就等，重置之后才接着派活。
+- 控制台只接受自己页面发来的请求（检查 Host 和 Origin）。别的网页偷偷往 `127.0.0.1:8770` 发请求，会被拒绝（403）。
 
 ## 许可
 

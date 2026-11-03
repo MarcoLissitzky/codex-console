@@ -4,7 +4,6 @@
 Read-only for banked resets: this console never redeems them.
 """
 
-import ctypes
 import json
 import os
 import subprocess
@@ -29,6 +28,7 @@ from codex_auto_resume import (  # noqa: E402
     STOP_FILE,
     RUNTIME_DIR,
     find_codex,
+    pid_alive,
 )
 
 import logging  # noqa: E402
@@ -105,27 +105,6 @@ def save_control(control):
 # ----------------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------------
-
-def pid_alive(pid):
-    if not pid:
-        return False
-    if os.name == "nt":
-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        handle = ctypes.windll.kernel32.OpenProcess(
-            PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid)
-        )
-        if not handle:
-            return False
-        code = ctypes.c_ulong()
-        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
-        ctypes.windll.kernel32.CloseHandle(handle)
-        return code.value == 259
-    try:
-        os.kill(int(pid), 0)
-        return True
-    except OSError:
-        return False
-
 
 def read_json(path, default=None):
     try:
@@ -355,7 +334,26 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return {}
 
+    def _from_own_page(self):
+        """Only this console's own page may talk to it.
+
+        Host stops DNS rebinding; Origin stops other sites from POSTing here (CSRF).
+        No Origin at all is a local tool such as curl, which is allowed.
+        """
+        port = self.server.server_address[1]
+        own = {f"127.0.0.1:{port}", f"localhost:{port}"}
+        if self.headers.get("Host", "") not in own:
+            return False
+        origin = self.headers.get("Origin")
+        return origin is None or origin.removeprefix("http://") in own
+
+    def _refuse(self):
+        self._send(403, json.dumps({"ok": False, "reason": "请求不是来自本控制台页面，已拒绝"}, ensure_ascii=False),
+                   "application/json")
+
     def do_GET(self):
+        if not self._from_own_page():
+            return self._refuse()
         if self.path in ("/", "/index.html") or self.path.startswith("/?"):
             # read on every request so page edits show up without a restart
             self._send(200, PAGE_FILE.read_text(encoding="utf-8"), "text/html")
@@ -386,6 +384,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, "not found", "text/plain")
 
     def do_POST(self):
+        if not self._from_own_page():
+            return self._refuse()
         if self.path.startswith("/api/stop"):
             STOP_FILE.write_text("stop\n", encoding="utf-8")
             self._send(200, json.dumps({"ok": True, "stopRequested": True}), "application/json")
