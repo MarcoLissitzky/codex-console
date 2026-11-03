@@ -325,8 +325,9 @@ def run_codex(codex: str, folder: Path, cwd: str, sandbox: str, session: str | N
     else:
         for img in images:
             cmd += ["-i", str(folder / img)]
-        # 正文默认放命令行参数（守护进程的续跑提示也是这么传的）；太长才走 stdin，Windows 命令行上限 32767 字符
-        use_stdin = len(prompt) > ARG_LIMIT
+        # 正文默认放命令行参数（守护进程的续跑提示也是这么传的）；太长才走 stdin，Windows 命令行上限 32767 字符。
+        # 退回到 npm 的 codex.cmd 时一律走 stdin：cmd.exe 会在参数里的第一个换行处截断
+        use_stdin = len(prompt) > ARG_LIMIT or codex.lower().endswith((".cmd", ".bat"))
         cmd += ["-" if use_stdin else prompt]
     logger.info("codex exec %s（%s）", "resume " + session if session else "新会话", folder.name)
     proc = subprocess.Popen(
@@ -334,7 +335,7 @@ def run_codex(codex: str, folder: Path, cwd: str, sandbox: str, session: str | N
         text=True, encoding="utf-8", errors="replace", bufsize=1,
     )
     assert proc.stdin and proc.stdout
-    if not session and len(prompt) > ARG_LIMIT:
+    if not session and use_stdin:
         proc.stdin.write(prompt)
     proc.stdin.close()
     out = []
