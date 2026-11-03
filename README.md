@@ -70,7 +70,7 @@ images: a.png, b.png            # 可省略，路径相对工单文件夹
 - `cwd` 必须在 `allowed_roots` 里某个目录下面；沙箱只允许 `read-only` 和 `workspace-write`。
 - 队列开的是 `codex exec` 非交互会话，中途不会停下来问你，正文要把要求写全。
 - 守护进程（`watch.cmd`）和队列（`queue.cmd`）共用 `daemon.pid`，同一时间只能开一个。
-- 停止：在脚本目录建一个 `STOP` 文件，或者点控制台的「停止守护」。
+- 停止：在 `runtime` 文件夹里建一个 `STOP` 文件，或者点控制台的「停止守护」。
 
 ## 只续跑一个会话
 
@@ -100,7 +100,7 @@ watch.cmd --session <ID> --max-resumes 0   rem 一直续到任务结束
 - 在「被卡住」和「某枚 Reset 快到期」这些时刻上把「兑换 / 不兑换」穷举一遍，取总量最大的方案。
 - 同时给两个终点的答案：本期结束就不续订，和再续订 `renewalDays` 天。两个答案一样，说明续不续订只影响总量，不影响现在该怎么做。
 
-细节见 `planner-INTERFACE.md`。自动兑换目前只看「卡住了而且离重置还早」，还没有接 planner 的建议。
+细节见 `docs/planner-INTERFACE.md`。自动兑换目前只看「卡住了而且离重置还早」，还没有接 planner 的建议。
 
 ## 控制台
 
@@ -117,10 +117,11 @@ watch.cmd --session <ID> --max-resumes 0   rem 一直续到任务结束
 | `console.py` / `console.html` | 控制台后端 / 页面 |
 | `planner.py` | 兑换规划 |
 | `settings.py` | 读写 settings.json |
-| `probe_credits.py` | 打印额度和 Reset 的原始数据（只读） |
+| `tools/probe_credits.py` | 打印额度和 Reset 的原始数据（只读） |
+| `tools/build_fonts.py` | 生成控制台字体 |
 | `*.cmd` | Windows 启动脚本 |
 
-运行时文件（日志、状态、`control.json`、`settings.json`、`telemetry.jsonl`）都在 `.gitignore` 里。
+运行时文件（日志、状态、`daemon.pid`、`control.json`、`telemetry.jsonl`、`STOP`）都在 `runtime/` 里，第一次运行自动建。它和 `settings.json` 都不进仓库。
 
 ## 注意
 

@@ -21,8 +21,12 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
-STATE_FILE = BASE_DIR / "codex_auto_resume_state.json"
-LOG_FILE = BASE_DIR / "codex_auto_resume.log"
+# Log, state, pid and switches live here, apart from the code.
+RUNTIME_DIR = BASE_DIR / "runtime"
+RUNTIME_DIR.mkdir(exist_ok=True)
+
+STATE_FILE = RUNTIME_DIR / "codex_auto_resume_state.json"
+LOG_FILE = RUNTIME_DIR / "codex_auto_resume.log"
 
 RESET_SAFETY_BUFFER = 20
 
@@ -60,13 +64,13 @@ MAX_RESUMES = 2
 BASE_MAX_RESUMES = 2
 
 # Create this file to make a running watchdog stop after its current step.
-STOP_FILE = BASE_DIR / "STOP"
+STOP_FILE = RUNTIME_DIR / "STOP"
 
 # PID of the running daemon, written on startup and removed on exit.
-PID_FILE = BASE_DIR / "daemon.pid"
+PID_FILE = RUNTIME_DIR / "daemon.pid"
 
 # Runtime switches written by the console.
-CONTROL_FILE = BASE_DIR / "control.json"
+CONTROL_FILE = RUNTIME_DIR / "control.json"
 
 # 永不过期的 Reset（expiresAt 为 null）在排序和规划里按这么远之后到期处理
 NO_EXPIRY_SECONDS = 10 * 365 * 86400

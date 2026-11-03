@@ -22,10 +22,12 @@ from codex_auto_resume import (  # noqa: E402
     available_credits,
     consume_reset_credit,
     BASE_DIR,
+    CONTROL_FILE,
     LOG_FILE,
     PID_FILE,
     STATE_FILE,
     STOP_FILE,
+    RUNTIME_DIR,
     find_codex,
 )
 
@@ -76,8 +78,7 @@ def queue_status():
         "recentCwd": recent[:8],
     }
 QUOTA_TTL = 120
-TELEMETRY = BASE_DIR / "telemetry.jsonl"
-CONTROL_FILE = BASE_DIR / "control.json"
+TELEMETRY = RUNTIME_DIR / "telemetry.jsonl"
 
 DEFAULT_CONTROL = {
     "maxResumes": None,     # None=跟随守护进程启动参数，0=无限，n=上限

@@ -1,11 +1,6 @@
 # 运行时文件
-*.log
-codex_auto_resume_state.json
-daemon.pid
-control.json
+runtime/
 settings.json
-telemetry.jsonl
-STOP
 *.tmp
 __pycache__/
 

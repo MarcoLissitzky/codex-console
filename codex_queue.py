@@ -19,7 +19,7 @@ ticket.md 格式：
   （正文 = 发给 Codex 的任务）
 
 运行：queue.cmd 或 python codex_queue.py [--queue 目录] [--once]
-停止：在脚本目录建 STOP 文件（和守护进程同一个开关）。
+停止：在 runtime/ 里建 STOP 文件（和守护进程同一个开关）。
 """
 from __future__ import annotations
 
